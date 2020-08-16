@@ -1,28 +1,5 @@
 /*
- * Copyright (c) 2015-2018 Nexenta Systems, inc.
- *
- * This file is part of EdgeFS Project
- * (see https://github.com/Nexenta/edgefs).
- *
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
- */
-/*
-   BLAKE2 reference source code package - optimized C implementations
+   BLAKE2 reference source code package - reference C implementations
 
    Copyright 2012, Samuel Neves <sneves@dei.uc.pt>.  You may use this under the
    terms of the CC0, the OpenSSL Licence, or the Apache Public License 2.0, at
@@ -71,9 +48,9 @@ static int blake2bp_init_leaf( blake2b_state *S, size_t outlen, size_t keylen, u
   P->key_length = (uint8_t)keylen;
   P->fanout = PARALLELISM_DEGREE;
   P->depth = 2;
-  P->leaf_length = 0;
-  P->node_offset = offset;
-  P->xof_length = 0;
+  store32( &P->leaf_length, 0 );
+  store32( &P->node_offset, offset );
+  store32( &P->xof_length, 0 );
   P->node_depth = 0;
   P->inner_length = BLAKE2B_OUTBYTES;
   memset( P->reserved, 0, sizeof( P->reserved ) );
@@ -89,9 +66,9 @@ static int blake2bp_init_root( blake2b_state *S, size_t outlen, size_t keylen )
   P->key_length = (uint8_t)keylen;
   P->fanout = PARALLELISM_DEGREE;
   P->depth = 2;
-  P->leaf_length = 0;
-  P->node_offset = 0;
-  P->xof_length = 0;
+  store32( &P->leaf_length, 0 );
+  store32( &P->node_offset, 0 );
+  store32( &P->xof_length, 0 );
   P->node_depth = 1;
   P->inner_length = BLAKE2B_OUTBYTES;
   memset( P->reserved, 0, sizeof( P->reserved ) );
@@ -104,6 +81,7 @@ static int blake2bp_init_root( blake2b_state *S, size_t outlen, size_t keylen )
 int blake2bp_init( blake2bp_state *S, size_t outlen )
 {
   size_t i;
+
   if( !outlen || outlen > BLAKE2B_OUTBYTES ) return -1;
 
   memset( S->buf, 0, sizeof( S->buf ) );
@@ -166,9 +144,8 @@ int blake2bp_update( blake2bp_state *S, const void *pin, size_t inlen )
   {
     memcpy( S->buf + left, in, fill );
 
-    for( i = 0; i < PARALLELISM_DEGREE; ++i ) {
+    for( i = 0; i < PARALLELISM_DEGREE; ++i )
       blake2b_update( S->S[i], S->buf + i * BLAKE2B_BLOCKBYTES, BLAKE2B_BLOCKBYTES );
-    }
 
     in += fill;
     inlen -= fill;
@@ -206,8 +183,6 @@ int blake2bp_update( blake2bp_state *S, const void *pin, size_t inlen )
   S->buflen = left + inlen;
   return 0;
 }
-
-
 
 int blake2bp_final( blake2bp_state *S, void *out, size_t outlen )
 {
@@ -309,12 +284,11 @@ int blake2bp( void *out, size_t outlen, const void *in, size_t inlen, const void
 
   FS->last_node = 1; /* Mark as last node */
 
-  for( i = 0; i < PARALLELISM_DEGREE; ++i ) {
+  for( i = 0; i < PARALLELISM_DEGREE; ++i )
     blake2b_update( FS, hash[i], BLAKE2B_OUTBYTES );
-  }
-  return blake2b_final( FS, out, outlen );
-}
 
+  return blake2b_final( FS, out, outlen );;
+}
 
 #if defined(BLAKE2BP_SELFTEST)
 #include <string.h>
